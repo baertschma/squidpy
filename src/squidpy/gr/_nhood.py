@@ -186,7 +186,9 @@ def nhood_enrichment(
         show_progress_bar=show_progress_bar,
     )(callback=_test, indices=indices, indptr=indptr, int_clust=int_clust, n_cls=n_cls, seed=seed)
     zscore = (count - perms.mean(axis=0)) / perms.std(axis=0)
-
+    shuffled_mean = perms.mean(axis=0)
+    shuffled_std = perms.std(axis=0)
+   
     if copy:
         return zscore, count
 
@@ -194,7 +196,7 @@ def nhood_enrichment(
         adata,
         attr="uns",
         key=Key.uns.nhood_enrichment(cluster_key),
-        data={"zscore": zscore, "count": count},
+        data={"zscore": zscore, "count": count, "shuffled_mean": shuffled_mean, "shuffled_std": shuffled_std},
         time=start,
     )
 
