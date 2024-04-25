@@ -1,10 +1,11 @@
 """Functions for building graphs from spatial coordinates."""
+
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable  # noqa: F401
 from functools import partial
 from itertools import chain
-from typing import Iterable, List, Tuple, Union  # noqa: F401
 
 import numpy as np
 from anndata import AnnData
@@ -202,7 +203,7 @@ def _spatial_neighbor(
             raise NotImplementedError(f"Coordinate type `{coord_type}` is not yet implemented.")
 
     if coord_type == CoordType.GENERIC and isinstance(radius, Iterable):
-        minn, maxx = sorted(radius)[:2]  # type: ignore[var-annotated]
+        minn, maxx = sorted(radius)[:2]
         mask = (Dst.data < minn) | (Dst.data > maxx)
         a_diag = Adj.diagonal()
 
@@ -295,19 +296,18 @@ def _build_connectivity(
         tree.fit(coords)
 
         if radius is None:
-            results = tree.kneighbors()
-            dists, row_indices = (result.reshape(-1) for result in results)
-            col_indices = np.repeat(np.arange(N), n_neighs)
+            dists, col_indices = tree.kneighbors()
+            dists, col_indices = dists.reshape(-1), col_indices.reshape(-1)
+            row_indices = np.repeat(np.arange(N), n_neighs)
             if neigh_correct:
                 dist_cutoff = np.median(dists) * 1.3  # there's a small amount of sway
                 mask = dists < dist_cutoff
-                row_indices, col_indices = row_indices[mask], col_indices[mask]
-                dists = dists[mask]
+                row_indices, col_indices, dists = row_indices[mask], col_indices[mask], dists[mask]
         else:
-            results = tree.radius_neighbors()
-            dists = np.concatenate(results[0])
-            row_indices = np.concatenate(results[1])
-            col_indices = np.repeat(np.arange(N), [len(x) for x in results[1]])
+            dists, col_indices = tree.radius_neighbors()
+            row_indices = np.repeat(np.arange(N), [len(x) for x in col_indices])
+            dists = np.concatenate(dists)
+            col_indices = np.concatenate(col_indices)
 
         Adj = csr_matrix((np.ones_like(row_indices, dtype=np.float64), (row_indices, col_indices)), shape=(N, N))
         if return_distance:
